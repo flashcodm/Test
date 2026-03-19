@@ -5,7 +5,10 @@ plugins {
 
 version = '1.0.0'
 group = 'com.eriox'
-archivesBaseName = 'eriox-pvp-addon'
+
+base {
+    archivesName = 'eriox-pvp-addon'
+}
 
 repositories {
     mavenCentral()
