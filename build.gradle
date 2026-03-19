@@ -1,5 +1,5 @@
 plugins {
-    id 'fabric-loom' version '1.7-SNAPSHOT'
+    id 'fabric-loom' version '1.9.1'
     id 'maven-publish'
 }
 
@@ -18,15 +18,7 @@ dependencies {
     minecraft 'com.mojang:minecraft:1.21.1'
     mappings 'net.fabricmc:yarn:1.21.1+build.3:v2'
     modImplementation 'net.fabricmc:fabric-loader:0.16.5'
-
     modImplementation 'meteordevelopment:meteor-client:0.5.8-SNAPSHOT'
-}
-
-processResources {
-    inputs.property 'version', project.version
-    filesMatching('fabric.mod.json') {
-        expand 'version': project.version
-    }
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -36,10 +28,4 @@ tasks.withType(JavaCompile).configureEach {
 java {
     sourceCompatibility = JavaVersion.VERSION_21
     targetCompatibility = JavaVersion.VERSION_21
-}
-
-jar {
-    from('LICENSE') {
-        rename { "${it}_${archivesBaseName}" }
-    }
 }
