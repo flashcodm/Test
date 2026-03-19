@@ -1,0 +1,119 @@
+name: Build Addon
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v3
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Setup project structure
+        run: |
+          mkdir -p src/main/java/com/eriox/pvpaddon/modules
+          mkdir -p src/main/java/com/eriox/pvpaddon/mixins
+          mkdir -p src/main/resources
+          mv AntiKnockback.java src/main/java/com/eriox/pvpaddon/modules/
+          mv ArmorAlert.java src/main/java/com/eriox/pvpaddon/modules/
+          mv AutoTotem.java src/main/java/com/eriox/pvpaddon/modules/
+          mv CrystalAura.java src/main/java/com/eriox/pvpaddon/modules/
+          mv MaceCombo.java src/main/java/com/eriox/pvpaddon/modules/
+          mv SpearPVP.java src/main/java/com/eriox/pvpaddon/modules/
+          mv SwordCombo.java src/main/java/com/eriox/pvpaddon/modules/
+          mv VelocityControl.java src/main/java/com/eriox/pvpaddon/modules/
+          mv ErioxPVPAddon.java src/main/java/com/eriox/pvpaddon/
+
+      - name: Create missing files
+        run: |
+          cat > src/main/java/com/eriox/pvpaddon/modules/ErioxCategory.java << 'EOF'
+          package com.eriox.pvpaddon.modules;
+          import meteordevelopment.meteorclient.systems.modules.Category;
+          public class ErioxCategory {
+              public static final Category CATEGORY = new Category("Eriox PVP");
+          }
+          EOF
+
+          cat > src/main/java/com/eriox/pvpaddon/mixins/MixinLivingEntity.java << 'EOF'
+          package com.eriox.pvpaddon.mixins;
+          import com.eriox.pvpaddon.modules.AntiKnockback;
+          import com.eriox.pvpaddon.modules.VelocityControl;
+          import meteordevelopment.meteorclient.systems.modules.Modules;
+          import net.minecraft.entity.LivingEntity;
+          import org.spongepowered.asm.mixin.Mixin;
+          import org.spongepowered.asm.mixin.injection.At;
+          import org.spongepowered.asm.mixin.injection.ModifyVariable;
+          @Mixin(LivingEntity.class)
+          public abstract class MixinLivingEntity {
+              @ModifyVariable(method = "takeKnockback", at = @At("HEAD"), argsOnly = true, index = 1)
+              private double modifyKnockbackStrength(double strength) {
+                  LivingEntity self = (LivingEntity)(Object)this;
+                  if (!self.getWorld().isClient) return strength;
+                  if (self != net.minecraft.client.MinecraftClient.getInstance().player) return strength;
+                  AntiKnockback ak = Modules.get().get(AntiKnockback.class);
+                  if (ak != null && ak.isActive()) return strength * (1.0 - ak.getHorizontal());
+                  VelocityControl vc = Modules.get().get(VelocityControl.class);
+                  if (vc != null && vc.isActive()) return strength * vc.getHorizontal();
+                  return strength;
+              }
+          }
+          EOF
+
+          cat > src/main/resources/fabric.mod.json << 'EOF'
+          {
+            "schemaVersion": 1,
+            "id": "eriox-pvp-addon",
+            "version": "1.0.0",
+            "name": "Eriox PVP Addon",
+            "description": "PVP modules for Meteor Client by eriox",
+            "authors": ["eriox"],
+            "license": "MIT",
+            "environment": "client",
+            "entrypoints": {
+              "client": ["com.eriox.pvpaddon.ErioxPVPAddon"]
+            },
+            "mixins": ["eriox-pvp-addon.mixins.json"],
+            "depends": {
+              "fabricloader": ">=0.16.0",
+              "meteor-client": ">=0.5.8"
+            }
+          }
+          EOF
+
+          cat > src/main/resources/eriox-pvp-addon.mixins.json << 'EOF'
+          {
+            "required": true,
+            "minVersion": "0.8",
+            "package": "com.eriox.pvpaddon.mixins",
+            "compatibilityLevel": "JAVA_21",
+            "mixins": ["MixinLivingEntity"],
+            "injectors": { "defaultRequire": 1 }
+          }
+          EOF
+
+          cat > settings.gradle << 'EOF'
+          pluginManagement {
+            repositories {
+              maven { url 'https://maven.fabricmc.net/' }
+              gradlePluginPortal()
+            }
+          }
+          rootProject.name = 'eriox-pvp-addon'
+          EOF
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew || true
+
+      - name: Build
+        run: ./gradlew build --no-daemon
+
+      - name: Upload JAR
+        uses: actions/upload-artifact@v3
+        with:
+          name: eriox-pvp-addon
+          path: build/libs/eriox-pvp-addon-1.0.0.jar
